@@ -1,0 +1,5 @@
+.venv
+.vscode 
+modal 
+.env
+lexybot/__pycache__/
