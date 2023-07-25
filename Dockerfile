@@ -4,4 +4,4 @@ WORKDIR /lexybot
 COPY poetry.lock pyproject.toml /lexybot/
 RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi
 COPY . /lexybot
-CMD python run.py 
+CMD python lexybot/run.py 
