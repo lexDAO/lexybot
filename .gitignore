@@ -1,5 +1,6 @@
 .venv
 .vscode 
-modal 
+
 .env
 lexybot/__pycache__/
+modal/__pycache__/

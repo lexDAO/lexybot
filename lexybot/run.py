@@ -1,18 +1,11 @@
-import os
-import discord
-from discord.ext import commands
-
-from dotenv import load_dotenv
-
-import os
-import discord
-from discord.ext import commands
-from dotenv import load_dotenv
-
-from typing import List, Optional
-from pydantic import BaseModel
-import httpx
 import json
+import os
+from typing import List, Optional
+
+import discord
+import httpx
+from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -31,13 +24,17 @@ class Message(BaseModel):
 
 def chat(messages: List[Message]) -> str:
     try:
+        print("Chatting with LLM...")
         client = httpx.Client(timeout=180.0)
-        reqUrl = "https://nerderlyne--llama2-chat.modal.run"
+        reqUrl = os.environ["LLM_URL"]
         headersList = {
             "Accept": "*/*",
             "Content-Type": "application/json",
         }
         payload = json.dumps({"messages": messages})
+        print(f"Request URL: {reqUrl}")
+        print(f"Request Payload: {payload}")
+        print(f"Request Headers: {headersList}")
         data = client.post(reqUrl, data=payload, headers=headersList)
         return data.text
     except Exception as e:
@@ -58,16 +55,35 @@ async def on_message(message: discord.Message):
     try:
         if message.author == bot.user:
             return
+        print("Bot mentioned: ", bot.user.mentioned_in(message))
+        if bot.user.mentioned_in(message):  # mentions bot
+            previous_messages = await message.channel.history(limit=3).flatten()
+            messages = []
+            for previous_message in reversed(previous_messages):
+                role = "user"
+                if message.author == bot.user:
+                    role = "assistant"
 
-        if (
-            bot.user.mentioned_in(message)
-            or message.reference
-            and message.reference.resolved.author == bot.user
-        ):
-            messages = [{"role": "user", "content": message.content}]
-            response = chat(messages)
+                messages.append(
+                    Message(
+                        role=role,
+                        content=previous_message.clean_content,
+                        name=previous_message.author.name,
+                    )
+                )
+
+            messages.append(
+                Message(
+                    role="user",
+                    content=message.clean_content,
+                    name=message.author.name,
+                )
+            )  # replace user id with user name
+
+            print(messages)
+            response = chat([dict(m) for m in messages])
             print(response)
-            await message.channel.send(response)
+            await message.reply(response)
     except Exception as e:
         print(f"An error occurred: {e}")
 
