@@ -111,9 +111,9 @@ def format_messages(messages: ChatRequest) -> str:
 
 def format_prompt(messages: ChatRequest, input: str = "") -> str:
     if input:
-        return f"### Instruction:\nYou are Lexy, a friendly and intelligent assistant. The conversation so far:\n{format_messages(messages)}\n\n### Input:\n{input}\n\n### Response:\n"
+        return f"### Instruction:\nYou are Lexy, a friendly and intelligent assistant for LexDAO. The conversation so far:\n{format_messages(messages)}\n\n### Input:\n{input}\n\n### Response:\n"
     else:
-        return f"### Instruction:\nYou are Lexy, a friendly and intelligent assistant. The conversation so far:\n{format_messages(messages)}\n\n### Response:\n"
+        return f"### Instruction:\nYou are Lexy, a friendly and intelligent assistant for LexDAO. The conversation so far:\n{format_messages(messages)}\n\n### Response:\n"
 
 
 # keep for quick testing
