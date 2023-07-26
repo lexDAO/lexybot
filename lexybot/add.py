@@ -1,10 +1,10 @@
-from llama_index import VectorStoreIndex, SimpleDirectoryReader
-from llama_index.vector_stores import MilvusVectorStore
-from llama_index.storage.storage_context import StorageContext
-import openai
 import os
+
+import openai
 from dotenv import load_dotenv
-from llama_index import VectorStoreIndex
+from llama_index import SimpleDirectoryReader, VectorStoreIndex
+from llama_index.storage.storage_context import StorageContext
+from llama_index.vector_stores import MilvusVectorStore
 
 load_dotenv()
 

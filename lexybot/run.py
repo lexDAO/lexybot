@@ -1,19 +1,18 @@
 import asyncio
 import json
-from typing import List, Optional
 import os
 from concurrent.futures import ThreadPoolExecutor
-
-from llama_index.vector_stores import MilvusVectorStore
-from llama_index import VectorStoreIndex
-from llama_index.indices.postprocessor import SimilarityPostprocessor
+from typing import List, Optional
 
 import discord
 import httpx
 import openai
-from pydantic import BaseModel
-from loguru import logger
 from dotenv import load_dotenv
+from llama_index import VectorStoreIndex
+from llama_index.indices.postprocessor import SimilarityPostprocessor
+from llama_index.vector_stores import MilvusVectorStore
+from loguru import logger
+from pydantic import BaseModel
 
 load_dotenv()
 
