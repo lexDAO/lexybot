@@ -4,3 +4,5 @@
 .env
 lexybot/__pycache__/
 modal/__pycache__/
+
+logs

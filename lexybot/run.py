@@ -1,18 +1,24 @@
 import asyncio
 import json
-import logging
+from typing import List, Optional
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional
+
+from llama_index.vector_stores import MilvusVectorStore
+from llama_index import VectorStoreIndex
+from llama_index.indices.postprocessor import SimilarityPostprocessor
 
 import discord
 import httpx
-from dotenv import load_dotenv
+import openai
 from pydantic import BaseModel
+from loguru import logger
+from dotenv import load_dotenv
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+logger.level("INFO")
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -20,6 +26,8 @@ intents.message_content = True
 bot = discord.Bot(intents=intents)
 
 queue = asyncio.Queue()
+
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 
 class Message(BaseModel):
@@ -30,19 +38,16 @@ class Message(BaseModel):
 
 @bot.event
 async def on_ready():
-    print(f"{bot.user.name} has connected to Discord!")
+    logger.info(f"{bot.user.name} has connected to Discord!")
     asyncio.get_running_loop().create_task(background_task())
 
 
 @bot.event
 async def on_message(message: discord.Message):
-    print(
-        f"{message.channel}: {message.author}: {message.author.name}: {message.content}"
-    )
     try:
         if message.author == bot.user:
             return
-        print("Bot mentioned: ", bot.user.mentioned_in(message))
+
         if bot.user.mentioned_in(message):  # mentions bot
             if isinstance(message.channel, discord.channel.DMChannel) or (
                 bot.user and bot.user.mentioned_in(message)
@@ -55,38 +60,67 @@ async def on_message(message: discord.Message):
                     pastMessage = None
                 await queue.put((message, pastMessage))
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.exception(f"An error occurred: {e}")
 
 
 @bot.slash_command(guild_ids=[os.environ["DISCORD_GUILD"]])
 async def lexy(ctx):
+    # Health check
     await ctx.respond("Hello!")
 
 
-def chat(messages: List[Message]) -> str:
+def query(message: discord.Message):
+    vector_store = MilvusVectorStore(
+        host=os.environ["MILVUS_HOST"],
+        port=os.environ["MILVUS_PORT"],
+        user="db_admin",
+        password=os.environ["MILVUS_PASSWORD"],
+        use_secure=True,
+        collection_name="lex",
+    )
+    index = VectorStoreIndex.from_vector_store(vector_store)
+    retriever = index.as_retriever()
+    nodes = retriever.retrieve(message.clean_content)
+    processor = SimilarityPostprocessor(similarity_cutoff=0.95)
+    filtered_nodes = processor.postprocess_nodes(nodes)
+
+    if len(filtered_nodes) != 0:
+        response = ""
+        for node in filtered_nodes:
+            response += node.node.get_content() + "\n"
+        logger.info(f"Response:", response)
+        return response
+
+    return None
+
+
+def chat(
+    messages: List[Message],
+    ctx: Optional[str] = None,
+) -> str:
     try:
-        print("Chatting with LLM...")
         client = httpx.Client(timeout=180.0)
         reqUrl = os.environ["LLM_URL"]
         headersList = {
             "Accept": "*/*",
             "Content-Type": "application/json",
         }
-        payload = json.dumps({"messages": messages})
-        print(f"Request URL: {reqUrl}")
-        print(f"Request Payload: {payload}")
-        print(f"Request Headers: {headersList}")
+        payload = json.dumps({"messages": messages, "ctx": ctx})
+
+        logger.info(f"Request URL: {reqUrl}")
+        logger.info(f"Request Payload: {payload}")
+
         data = client.post(reqUrl, data=payload, headers=headersList)
         return data.text
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.exception(e)
         return "Sorry, I couldn't process your request at the moment."
 
 
 async def background_task():
     executor = ThreadPoolExecutor(max_workers=1)
     loop = asyncio.get_running_loop()
-    print("Task Started. Waiting for inputs.")
+
     while True:
         msg_pair: tuple[discord.Message, discord.Message] = await queue.get()
         msg, past = msg_pair
@@ -108,10 +142,18 @@ async def background_task():
             )
         )
 
+        try:
+            ctx = query(msg)
+            logger.info(f"Context: {ctx}")
+        except Exception as e:
+            logger.exception(e)
+            ctx = None
+
         response = await loop.run_in_executor(
-            executor, chat, [dict(m) for m in messages]
+            executor, chat, [dict(m) for m in messages], ctx
         )
-        print(f"Response: {response}")
+
+        logger.info(f"Response: {response}")
         await msg.reply(response)
 
 

@@ -10,7 +10,11 @@ python = "^3.10"
 python-dotenv = "^1.0.0"
 py-cord = "^2.4.1"
 httpx = "^0.24.1"
-pydantic = "^2.0.3"
+llama-index = "^0.7.11.post1"
+pymilvus = "^2.2.14"
+docx2txt = "^0.8"
+loguru = "^0.7.0"
+
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.12.0"

@@ -21,6 +21,7 @@ class MessageRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[MessageRequest]
+    ctx: Optional[str]
 
 
 def download_model_to_folder():
@@ -87,7 +88,7 @@ async def chat(req: ChatRequest):
     for i, message in enumerate(req.messages):
         print(f"[{i}] {message.role} -> {message.content}")
 
-    prompts = [format_prompt(messages=req.messages)]
+    prompts = [format_prompt(messages=req.messages, ctx=req.ctx)]
 
     print("Prompt formatted as: ")
     for i, prompt in enumerate(prompts):
@@ -109,11 +110,12 @@ def format_messages(messages: ChatRequest) -> str:
     )
 
 
-def format_prompt(messages: ChatRequest, input: str = "") -> str:
-    if input:
-        return f"### Instruction:\nYou are Lexy, a friendly and intelligent assistant for LexDAO. The conversation so far:\n{format_messages(messages)}\n\n### Input:\n{input}\n\n### Response:\n"
+def format_prompt(messages: ChatRequest, ctx: str = "") -> str:
+    system_prompt = "You are known as Lexy, a conversational assistant for LexDAO. You are friendly and helpful. You stick to the facts and keep your responses concise. Only answer the questions you are confident about."
+    if ctx:
+        return f"### Instruction:\n{system_prompt} The conversation so far:\n{format_messages(messages)}\n\n### Input:\n{ctx}\n\n### Response:\n"
     else:
-        return f"### Instruction:\nYou are Lexy, a friendly and intelligent assistant for LexDAO. The conversation so far:\n{format_messages(messages)}\n\n### Response:\n"
+        return f"### Instruction:\n{system_prompt} The conversation so far:\n{format_messages(messages)}\n\n### Response:\n"
 
 
 # keep for quick testing
@@ -121,10 +123,8 @@ def format_prompt(messages: ChatRequest, input: str = "") -> str:
 def main():
     model = Model()
     questions = [
-        "Implement a Python function to compute the Fibonacci numbers.",
-        "Write a Rust function that performs binary exponentiation.",
-        "How do I allocate memory in C?",
-        "What is the fable involving a fox and grapes?",
-        "Write a story in the style of James Joyce about a trip to the Australian outback in 2083, to see robots in the beautiful desert.",
+        "What is the purpose of LexDAO?",
+        "When is the next LexDAO governance meeting?",
+        "How do I join LexDAO?",
     ]
     model.generate.call(questions)
